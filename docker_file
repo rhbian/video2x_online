@@ -1,0 +1,25 @@
+FROM continuumio/miniconda3
+
+RUN apt install -y git build-essential cmake
+# not install mesa-opencl-icd
+RUN apt install -y libopencv-dev beignet-opencl-icd opencl-headers ocl-icd-opencl-dev
+
+# build waifu2x from source
+RUN git clone "https://github.com/DeadSix27/waifu2x-converter-cpp" && \
+cd waifu2x-converter-cpp && \
+mkdir out && cd out && \
+cmake .. -DENABLE_CUDA=OFF -DINSTALL_MODELS=ON  && \
+make -j2 && \
+make install && \
+ldconfig 
+
+# 
+RUN mkdir -p /home/video2x
+WORKDIR /home/video2x
+# COPY online_video2x.py /home/video2x/
+ADD online_video2x.py .
+
+EXPOSE 5000
+RUN pip install bentoml
+RUN python /home/video2x/online_video2x.py
+CMD bentoml serve-gunicorn Video2x:latest
